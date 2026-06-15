@@ -1,0 +1,68 @@
+import Link from "next/link";
+import { 
+  LayoutDashboard, 
+  FileText, 
+  CheckCircle, 
+  BarChart, 
+  PenTool, 
+  Briefcase, 
+  MessageSquare, 
+  Mic, 
+  FileEdit, 
+  History, 
+  Settings 
+} from "lucide-react";
+
+export function Sidebar() {
+  const menuItems = [
+    { name: "Dashboard", href: "/", icon: LayoutDashboard },
+    { name: "Resume Analyzer", href: "/resume-analyzer", icon: FileText },
+    { name: "ATS Match", href: "/ats-match", icon: CheckCircle },
+    { name: "Skill Gap Analysis", href: "/skill-gap", icon: BarChart },
+    { name: "Resume Optimizer", href: "/resume-optimizer", icon: PenTool },
+    { name: "Interview Prep", href: "/interview-prep", icon: Briefcase },
+    { name: "Mock Interview", href: "/mock-interview", icon: MessageSquare },
+    { name: "Voice Interview", href: "/voice-interview", icon: Mic },
+    { name: "Cover Letter Generator", href: "/cover-letter", icon: FileEdit },
+    { name: "History", href: "/history", icon: History },
+    { name: "Settings", href: "/settings", icon: Settings },
+  ];
+
+  return (
+    <aside className="w-[260px] h-full bg-white border-r border-border flex flex-col hidden md:flex shrink-0 z-10 sticky top-0">
+      <div className="h-[72px] flex items-center px-6 border-b border-border">
+        <Link href="/" className="flex items-center gap-2 font-bold text-xl text-primary">
+          <div className="w-8 h-8 rounded-md bg-primary flex items-center justify-center text-white">
+            S
+          </div>
+          Skillune
+        </Link>
+      </div>
+      
+      <div className="flex-1 overflow-y-auto py-6 px-4 space-y-1">
+        {menuItems.map((item) => (
+          <Link
+            key={item.name}
+            href={item.href}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium text-secondary-foreground hover:bg-secondary hover:text-primary transition-colors"
+          >
+            <item.icon className="w-5 h-5" />
+            {item.name}
+          </Link>
+        ))}
+      </div>
+
+      <div className="p-4 border-t border-border">
+        <div className="flex items-center gap-3 p-3 rounded-md bg-secondary/50">
+          <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary">
+            U
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-foreground truncate">User Name</p>
+            <p className="text-xs text-muted-foreground truncate">Pro Plan</p>
+          </div>
+        </div>
+      </div>
+    </aside>
+  );
+}
