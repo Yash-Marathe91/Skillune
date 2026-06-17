@@ -1,6 +1,20 @@
-import { Bell, Search } from "lucide-react";
+"use client";
+import { Bell, Search, LogOut } from "lucide-react";
+import { User } from "@supabase/supabase-js";
+import { createClient } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
 
-export function TopNav() {
+export function TopNav({ user }: { user: User }) {
+  const router = useRouter();
+  const displayName = user.user_metadata?.full_name || user.email?.split('@')[0] || user.phone || "U";
+  const initial = displayName.charAt(0).toUpperCase();
+  const avatarUrl = user.user_metadata?.avatar_url;
+
+  const handleSignOut = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/");
+  };
   return (
     <header className="h-[72px] bg-white border-b border-border flex items-center justify-between px-6 sticky top-0 z-10 shrink-0">
       <div className="flex items-center gap-4 flex-1">
@@ -26,9 +40,20 @@ export function TopNav() {
           <Bell className="w-5 h-5" />
           <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-destructive"></span>
         </button>
-        <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary cursor-pointer">
-          U
+        <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary overflow-hidden border border-border">
+          {avatarUrl ? (
+            <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+          ) : (
+            <span className="uppercase">{initial}</span>
+          )}
         </div>
+        <button 
+          onClick={handleSignOut}
+          title="Sign Out"
+          className="p-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive rounded-full transition-colors ml-2"
+        >
+          <LogOut className="w-4 h-4" />
+        </button>
       </div>
     </header>
   );
