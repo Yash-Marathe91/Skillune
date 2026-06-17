@@ -42,7 +42,7 @@ export default function LandingPage() {
         </p>
 
         <div className="flex flex-col sm:flex-row items-center gap-4">
-          <Link href="/dashboard" className="flex items-center gap-2 px-8 py-4 rounded-md bg-primary text-primary-foreground text-lg font-medium hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20">
+          <Link href="/login" className="flex items-center gap-2 px-8 py-4 rounded-md bg-primary text-primary-foreground text-lg font-medium hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20">
             Start Optimizing Now <ArrowRight className="w-5 h-5" />
           </Link>
           <Link href="https://github.com/Yash-Marathe91/Skillune" target="_blank" className="flex items-center gap-2 px-8 py-4 rounded-md bg-white border border-border text-foreground text-lg font-medium hover:bg-secondary transition-colors">

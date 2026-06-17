@@ -1,5 +1,4 @@
 "use client";
-
 import { createClient } from "@/lib/supabase/client";
 import { LogIn } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -29,15 +28,6 @@ export function AuthButton() {
     return () => subscription.unsubscribe();
   }, [supabase.auth]);
 
-  const handleLogin = async () => {
-    await supabase.auth.signInWithOAuth({
-      provider: 'github',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`
-      }
-    });
-  };
-
   if (loading) {
     return <div className="h-10 w-24 bg-secondary animate-pulse rounded-md"></div>;
   }
@@ -51,12 +41,11 @@ export function AuthButton() {
   }
 
   return (
-    <button 
-      onClick={handleLogin}
-      className="px-5 py-2.5 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors flex items-center gap-2"
+    <Link 
+      href="/login"
+      className="px-5 py-2.5 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
     >
-      <LogIn className="w-4 h-4" />
-      Sign in with GitHub
-    </button>
+      Sign In
+    </Link>
   );
 }
