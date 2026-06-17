@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { UploadCloud, FileText, CheckCircle, AlertCircle } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 
 export default function ResumeAnalyzer() {
   const [file, setFile] = useState<File | null>(null);
@@ -34,8 +35,14 @@ export default function ResumeAnalyzer() {
     formData.append("job_description", jobDescription);
 
     try {
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      
       const res = await fetch("http://localhost:8000/api/v1/resume/analyze", {
         method: "POST",
+        headers: {
+          ...(session ? { Authorization: `Bearer ${session.access_token}` } : {})
+        },
         body: formData,
       });
       

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
 from pydantic import BaseModel, Field
 from typing import List
 import fitz # PyMuPDF
@@ -9,6 +9,7 @@ from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
 from core.config import settings
+from core.auth import get_current_user, UserData
 
 router = APIRouter()
 
@@ -42,7 +43,8 @@ def extract_text_from_docx(file_bytes: bytes) -> str:
 @router.post("/analyze")
 async def analyze_resume(
     resume: UploadFile = File(...),
-    job_description: str = Form(...)
+    job_description: str = Form(...),
+    current_user: UserData = Depends(get_current_user)
 ):
     if not resume.filename.endswith(('.pdf', '.docx')):
         raise HTTPException(status_code=400, detail="Only PDF and DOCX files are supported.")

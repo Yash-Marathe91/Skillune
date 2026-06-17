@@ -15,7 +15,7 @@ import {
 
 export function Sidebar() {
   const menuItems = [
-    { name: "Dashboard", href: "/", icon: LayoutDashboard },
+    { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { name: "Resume Analyzer", href: "/resume-analyzer", icon: FileText },
     { name: "ATS Match", href: "/ats-match", icon: CheckCircle },
     { name: "Skill Gap Analysis", href: "/skill-gap", icon: BarChart },
