@@ -68,7 +68,7 @@ async def analyze_resume(
 
     # Initialize Gemini Chat Model
     llm = ChatGoogleGenerativeAI(
-        model="gemini-pro",
+        model="gemini-2.5-flash",
         temperature=0.2,
         google_api_key=settings.GEMINI_API_KEY
     )
