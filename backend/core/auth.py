@@ -12,6 +12,7 @@ supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
 class UserData(BaseModel):
     id: str
     email: str
+    token: str
 
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> UserData:
     """
@@ -30,7 +31,8 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
             
         return UserData(
             id=user_response.user.id,
-            email=user_response.user.email
+            email=user_response.user.email,
+            token=token
         )
     except Exception as e:
         raise HTTPException(

@@ -10,6 +10,7 @@ from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
 from core.config import settings
 from core.auth import get_current_user, UserData
+from core.db import get_auth_client
 
 router = APIRouter()
 
@@ -17,6 +18,8 @@ class AnalyzeRequest(BaseModel):
     job_description: str
 
 class ResumeAnalysis(BaseModel):
+    company_name: str = Field(description="The name of the company hiring for the position, if mentioned. Otherwise 'Unknown Company'.")
+    job_title: str = Field(description="The job title from the job description.")
     ats_score: int = Field(description="The ATS score out of 100 based on the match between resume and job description.")
     matching_skills: List[str] = Field(description="A list of matching skills found in both the resume and job description.")
     missing_skills: List[str] = Field(description="A list of important skills required in the job description that are missing in the resume.")
@@ -93,6 +96,46 @@ async def analyze_resume(
         analysis_result = parser.parse(response.content)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"AI processing failed: {str(e)}")
+        
+    # --- Database Persistence ---
+    try:
+        db = get_auth_client(current_user.token)
+        
+        # 1. Insert/Update Resume (We skip physical file upload for now to keep it fast)
+        resume_data = {
+            "user_id": current_user.id,
+            "title": f"Resume for {analysis_result.job_title}",
+            "file_path": f"local/{resume.filename}",
+            "file_type": "pdf" if resume.filename.endswith('.pdf') else "docx",
+            "extracted_text": text
+        }
+        res_res = db.table("resumes").insert(resume_data).execute()
+        resume_id = res_res.data[0]['id']
+        
+        # 2. Insert Job Description
+        job_data = {
+            "user_id": current_user.id,
+            "company_name": analysis_result.company_name,
+            "job_title": analysis_result.job_title,
+            "raw_text": job_description
+        }
+        job_res = db.table("job_descriptions").insert(job_data).execute()
+        job_id = job_res.data[0]['id']
+        
+        # 3. Insert ATS Analysis
+        ats_data = {
+            "user_id": current_user.id,
+            "resume_id": resume_id,
+            "job_id": job_id,
+            "overall_score": analysis_result.ats_score,
+            "matching_skills": analysis_result.matching_skills,
+            "missing_skills": analysis_result.missing_skills,
+            "ai_summary": analysis_result.summary
+        }
+        db.table("ats_analyses").insert(ats_data).execute()
+    except Exception as e:
+        print(f"Database insertion failed: {e}")
+        # We don't fail the request if DB insertion fails, to ensure the user still gets the result.
     
     return {
         "status": "success",

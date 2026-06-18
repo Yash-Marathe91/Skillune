@@ -9,10 +9,13 @@ from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
 from core.config import settings
 from core.auth import get_current_user, UserData
+from core.db import get_auth_client
 
 router = APIRouter()
 
 class CoverLetterResponse(BaseModel):
+    company_name: str = Field(description="The name of the company hiring for the position, if mentioned. Otherwise 'Unknown Company'.")
+    job_title: str = Field(description="The job title from the job description.")
     cover_letter: str = Field(description="The complete, professionally written cover letter.")
 
 def extract_text_from_pdf(file_bytes: bytes) -> str:
@@ -85,6 +88,42 @@ async def generate_cover_letter(
         result = parser.parse(response.content)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"AI processing failed: {str(e)}")
+        
+    # --- Database Persistence ---
+    try:
+        db = get_auth_client(current_user.token)
+        
+        # 1. Insert/Update Resume
+        resume_data = {
+            "user_id": current_user.id,
+            "title": f"Resume for {result.job_title}",
+            "file_path": f"local/{resume.filename}",
+            "file_type": "pdf" if resume.filename.endswith('.pdf') else "docx",
+            "extracted_text": text
+        }
+        res_res = db.table("resumes").insert(resume_data).execute()
+        resume_id = res_res.data[0]['id']
+        
+        # 2. Insert Job Description
+        job_data = {
+            "user_id": current_user.id,
+            "company_name": result.company_name,
+            "job_title": result.job_title,
+            "raw_text": job_description
+        }
+        job_res = db.table("job_descriptions").insert(job_data).execute()
+        job_id = job_res.data[0]['id']
+        
+        # 3. Insert Cover Letter
+        cl_data = {
+            "user_id": current_user.id,
+            "resume_id": resume_id,
+            "job_id": job_id,
+            "generated_content": result.cover_letter
+        }
+        db.table("cover_letters").insert(cl_data).execute()
+    except Exception as e:
+        print(f"Database insertion failed: {e}")
     
     return {
         "status": "success",
