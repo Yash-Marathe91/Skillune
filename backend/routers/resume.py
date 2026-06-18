@@ -88,9 +88,8 @@ async def analyze_resume(
     )
 
     try:
-        _input = prompt.format_prompt(resume_text=text, job_description=job_description)
-        response = llm.predict(_input.to_string())
-        analysis_result = parser.parse(response)
+        chain = prompt | llm | parser
+        analysis_result = chain.invoke({"resume_text": text, "job_description": job_description})
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"AI processing failed: {str(e)}")
     

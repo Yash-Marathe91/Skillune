@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+pydantic-settings
+langchain-core
+langchain-openai
+PyMuPDF
+python-docx
+supabase
+python-multipart
+pydantic
