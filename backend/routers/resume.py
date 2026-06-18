@@ -5,7 +5,7 @@ import fitz # PyMuPDF
 import docx
 import io
 
-from langchain_openai import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
 from core.config import settings
@@ -66,11 +66,11 @@ async def analyze_resume(
     if not text.strip():
         raise HTTPException(status_code=400, detail="Could not extract text from the provided document.")
 
-    # Initialize OpenAI Chat Model
-    llm = ChatOpenAI(
-        model_name="gpt-4o",
+    # Initialize Gemini Chat Model
+    llm = ChatGoogleGenerativeAI(
+        model="gemini-1.5-flash",
         temperature=0.2,
-        openai_api_key=settings.OPENAI_API_KEY
+        google_api_key=settings.GEMINI_API_KEY
     )
 
     # Setup Output Parser

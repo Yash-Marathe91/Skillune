@@ -19,3 +19,5 @@ app.include_router(resume.router, prefix="/api/v1/resume", tags=["Resume"])
 @app.get("/health")
 def health_check():
     return {"status": "ok", "project": settings.PROJECT_NAME}
+
+# Trigger reload for env variables
