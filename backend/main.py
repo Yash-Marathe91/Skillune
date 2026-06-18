@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from core.config import settings
-from routers import resume
+from routers import resume, cover_letter
 
 app = FastAPI(title=settings.PROJECT_NAME)
 
@@ -15,6 +15,7 @@ app.add_middleware(
 )
 
 app.include_router(resume.router, prefix="/api/v1/resume", tags=["Resume"])
+app.include_router(cover_letter.router, prefix="/api/v1/cover-letter", tags=["Cover Letter"])
 
 @app.get("/health")
 def health_check():
