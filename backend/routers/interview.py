@@ -21,6 +21,17 @@ class ChatRequest(BaseModel):
     job_role: str
     history: List[ChatMessage]
 
+class EvaluateRequest(BaseModel):
+    job_role: str
+    interview_type: str
+    history: List[ChatMessage]
+
+class EvaluationResult(BaseModel):
+    overall_score: int = Field(description="Score out of 100")
+    strengths: List[str] = Field(description="List of user's strong points during the interview")
+    weaknesses: List[str] = Field(description="List of areas where the user needs improvement")
+    feedback: str = Field(description="A comprehensive overall feedback paragraph")
+
 def get_llm():
     return ChatGoogleGenerativeAI(
         model="gemini-2.5-flash",
@@ -29,6 +40,7 @@ def get_llm():
     )
 
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
+from langchain_core.output_parsers import PydanticOutputParser
 
 @router.post("/start")
 async def start_interview(req: StartInterviewRequest, current_user: UserData = Depends(get_current_user)):
@@ -84,4 +96,53 @@ async def chat_interview(req: ChatRequest, current_user: UserData = Depends(get_
         return {"status": "success", "message": response.content}
     except Exception as e:
         print(f"Interview Chat Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/evaluate")
+async def evaluate_interview(req: EvaluateRequest, current_user: UserData = Depends(get_current_user)):
+    try:
+        llm = get_llm()
+        parser = PydanticOutputParser(pydantic_object=EvaluationResult)
+        
+        # Build the transcript
+        transcript = ""
+        for msg in req.history:
+            role = "Interviewer" if msg.role == "assistant" else "Candidate"
+            transcript += f"{role}: {msg.content}\n\n"
+            
+        system_prompt = (
+            f"You are an expert technical recruiter evaluating a '{req.interview_type}' interview "
+            f"for a '{req.job_role}' position.\n"
+            f"Review the following interview transcript and provide a detailed evaluation.\n\n"
+            f"TRANSCRIPT:\n{transcript}\n\n"
+            f"{parser.get_format_instructions()}"
+        )
+        
+        response = llm.invoke([
+            SystemMessage(content=system_prompt), 
+            HumanMessage(content="Please evaluate my performance.")
+        ])
+        eval_data = parser.parse(response.content)
+        
+        # --- Database Persistence ---
+        try:
+            db = get_auth_client(current_user.token)
+            db.table("interviews").insert({
+                "user_id": current_user.id,
+                "job_title": req.job_role,
+                "overall_score": eval_data.overall_score,
+                "feedback": eval_data.feedback
+            }).execute()
+        except Exception as db_e:
+            print(f"Failed to save interview to DB: {db_e}")
+            
+        return {
+            "status": "success",
+            "score": eval_data.overall_score,
+            "strengths": eval_data.strengths,
+            "weaknesses": eval_data.weaknesses,
+            "feedback": eval_data.feedback
+        }
+    except Exception as e:
+        print(f"Interview Evaluation Error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))

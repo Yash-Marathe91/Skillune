@@ -16,6 +16,8 @@ export default function MockInterview() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isEvaluating, setIsEvaluating] = useState(false);
+  const [evaluationData, setEvaluationData] = useState<any>(null);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -102,6 +104,42 @@ export default function MockInterview() {
     }
   };
 
+  const endInterview = async () => {
+    if (messages.length < 2) {
+      setIsStarted(false);
+      return;
+    }
+    
+    setIsEvaluating(true);
+    
+    try {
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const res = await fetch("http://localhost:8000/api/v1/interview/evaluate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(session ? { Authorization: `Bearer ${session.access_token}` } : {})
+        },
+        body: JSON.stringify({
+          job_role: jobRole,
+          interview_type: interviewType,
+          history: messages
+        })
+      });
+      
+      if (!res.ok) throw new Error("Failed to evaluate");
+      
+      const data = await res.json();
+      setEvaluationData(data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsEvaluating(false);
+    }
+  };
+
   return (
     <div className="max-w-5xl mx-auto h-[calc(100vh-8rem)] flex flex-col space-y-4">
       <div className="flex items-center justify-between">
@@ -160,6 +198,78 @@ export default function MockInterview() {
             </div>
           </div>
         </div>
+      ) : evaluationData || isEvaluating ? (
+        <div className="flex-1 bg-white rounded-xl border border-border shadow-sm flex flex-col p-8 overflow-y-auto">
+          {isEvaluating ? (
+            <div className="flex flex-col items-center justify-center h-full space-y-4">
+              <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+              <h2 className="text-xl font-bold text-foreground">Evaluating Interview...</h2>
+              <p className="text-muted-foreground text-center max-w-md">The AI is reviewing your answers and preparing your comprehensive performance report.</p>
+            </div>
+          ) : (
+            <div className="space-y-8 max-w-3xl mx-auto w-full">
+              <div className="text-center space-y-2">
+                <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-primary/10 border-4 border-primary/20 mb-2">
+                  <span className="text-3xl font-bold text-primary">{evaluationData.score}</span>
+                </div>
+                <h2 className="text-2xl font-bold text-foreground">Interview Complete</h2>
+                <p className="text-muted-foreground">Here is how you performed for the {jobRole} role.</p>
+              </div>
+
+              <div className="bg-secondary/50 rounded-xl p-6 border border-border">
+                <h3 className="font-bold text-foreground flex items-center gap-2 mb-3">
+                  <Bot className="w-5 h-5 text-primary" /> Overall Feedback
+                </h3>
+                <p className="text-sm text-secondary-foreground leading-relaxed">
+                  {evaluationData.feedback}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <h3 className="font-bold text-success flex items-center gap-2 border-b border-border pb-2">
+                    <CheckCircle className="w-5 h-5" /> Strengths
+                  </h3>
+                  <ul className="space-y-2">
+                    {evaluationData.strengths.map((s: string, i: number) => (
+                      <li key={i} className="text-sm flex items-start gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-success mt-1.5 shrink-0"></span>
+                        <span className="text-muted-foreground">{s}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="font-bold text-destructive flex items-center gap-2 border-b border-border pb-2">
+                    <CheckCircle className="w-5 h-5" /> Areas for Improvement
+                  </h3>
+                  <ul className="space-y-2">
+                    {evaluationData.weaknesses.map((w: string, i: number) => (
+                      <li key={i} className="text-sm flex items-start gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-destructive mt-1.5 shrink-0"></span>
+                        <span className="text-muted-foreground">{w}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+
+              <div className="pt-8 flex justify-center">
+                <button 
+                  onClick={() => {
+                    setIsStarted(false);
+                    setEvaluationData(null);
+                    setMessages([]);
+                  }}
+                  className="bg-primary text-primary-foreground px-8 py-3 rounded-md font-medium hover:bg-primary/90 transition-colors shadow-sm"
+                >
+                  Start New Interview
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       ) : (
         <div className="flex-1 bg-white rounded-xl border border-border shadow-sm flex flex-col overflow-hidden">
           {/* Chat Header */}
@@ -174,8 +284,9 @@ export default function MockInterview() {
               </div>
             </div>
             <button 
-              onClick={() => setIsStarted(false)}
-              className="text-sm text-destructive hover:bg-destructive/10 px-3 py-1.5 rounded-md transition-colors"
+              onClick={endInterview}
+              disabled={isLoading}
+              className="text-sm text-destructive hover:bg-destructive/10 px-3 py-1.5 rounded-md transition-colors disabled:opacity-50"
             >
               End Interview
             </button>
