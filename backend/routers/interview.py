@@ -28,8 +28,13 @@ class EvaluateRequest(BaseModel):
 
 class EvaluationResult(BaseModel):
     overall_score: int = Field(description="Score out of 100")
+    technical_score: int = Field(description="Technical accuracy score out of 100")
+    communication_score: int = Field(description="Communication and clarity score out of 100")
+    behavioral_score: int = Field(description="Professionalism and behavioral score out of 100")
     strengths: List[str] = Field(description="List of user's strong points during the interview")
     weaknesses: List[str] = Field(description="List of areas where the user needs improvement")
+    grammatical_errors: List[str] = Field(description="List of specific grammatical errors made by the user, if any. Leave empty if none.")
+    sentence_errors: List[str] = Field(description="List of specific awkward phrasing or sentence structure errors made by the user, if any. Leave empty if none.")
     feedback: str = Field(description="A comprehensive overall feedback paragraph")
 
 def get_llm():
@@ -131,6 +136,11 @@ async def evaluate_interview(req: EvaluateRequest, current_user: UserData = Depe
                 "user_id": current_user.id,
                 "job_title": req.job_role,
                 "overall_score": eval_data.overall_score,
+                "technical_score": eval_data.technical_score,
+                "communication_score": eval_data.communication_score,
+                "behavioral_score": eval_data.behavioral_score,
+                "grammatical_errors": eval_data.grammatical_errors,
+                "sentence_errors": eval_data.sentence_errors,
                 "feedback": eval_data.feedback
             }).execute()
         except Exception as db_e:
@@ -139,8 +149,13 @@ async def evaluate_interview(req: EvaluateRequest, current_user: UserData = Depe
         return {
             "status": "success",
             "score": eval_data.overall_score,
+            "technical_score": eval_data.technical_score,
+            "communication_score": eval_data.communication_score,
+            "behavioral_score": eval_data.behavioral_score,
             "strengths": eval_data.strengths,
             "weaknesses": eval_data.weaknesses,
+            "grammatical_errors": eval_data.grammatical_errors,
+            "sentence_errors": eval_data.sentence_errors,
             "feedback": eval_data.feedback
         }
     except Exception as e:

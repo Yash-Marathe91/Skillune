@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Send, User, Bot, Briefcase, Settings2, Play, CheckCircle } from "lucide-react";
+import { Send, User, Bot, Briefcase, Settings2, Play, CheckCircle, AlertTriangle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from "recharts";
 
 type Message = {
   role: "system" | "user" | "assistant";
@@ -252,6 +253,58 @@ export default function MockInterview() {
                       </li>
                     ))}
                   </ul>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                <div className="bg-secondary/30 rounded-xl p-6 border border-border">
+                  <h3 className="font-bold text-foreground mb-4 text-center">Skill Breakdown</h3>
+                  <div className="h-[250px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RadarChart cx="50%" cy="50%" outerRadius="80%" data={[
+                        { subject: 'Overall', A: evaluationData.score, fullMark: 100 },
+                        { subject: 'Technical', A: evaluationData.technical_score, fullMark: 100 },
+                        { subject: 'Communication', A: evaluationData.communication_score, fullMark: 100 },
+                        { subject: 'Behavioral', A: evaluationData.behavioral_score, fullMark: 100 },
+                      ]}>
+                        <PolarGrid />
+                        <PolarAngleAxis dataKey="subject" tick={{ fill: '#64748b', fontSize: 12 }} />
+                        <PolarRadiusAxis angle={30} domain={[0, 100]} />
+                        <Radar name="Score" dataKey="A" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.6} />
+                      </RadarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="font-bold text-warning flex items-center gap-2 border-b border-border pb-2 text-yellow-600">
+                    <AlertTriangle className="w-5 h-5" /> Language & Grammar
+                  </h3>
+                  
+                  <div className="space-y-3 max-h-[250px] overflow-y-auto pr-2">
+                    {evaluationData.grammatical_errors?.length > 0 || evaluationData.sentence_errors?.length > 0 ? (
+                      <>
+                        {evaluationData.grammatical_errors?.map((err: string, i: number) => (
+                          <div key={`g-${i}`} className="text-sm bg-yellow-50/50 p-3 rounded-md border border-yellow-100">
+                            <span className="font-semibold text-yellow-700 block mb-1">Grammar Error:</span>
+                            <span className="text-muted-foreground">{err}</span>
+                          </div>
+                        ))}
+                        {evaluationData.sentence_errors?.map((err: string, i: number) => (
+                          <div key={`s-${i}`} className="text-sm bg-yellow-50/50 p-3 rounded-md border border-yellow-100">
+                            <span className="font-semibold text-yellow-700 block mb-1">Sentence Structure:</span>
+                            <span className="text-muted-foreground">{err}</span>
+                          </div>
+                        ))}
+                      </>
+                    ) : (
+                      <div className="bg-success/10 border border-success/20 p-4 rounded-md">
+                        <p className="text-sm text-success font-medium flex items-center gap-2">
+                          <CheckCircle className="w-4 h-4" /> No major grammatical or sentence errors detected. Great job!
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
