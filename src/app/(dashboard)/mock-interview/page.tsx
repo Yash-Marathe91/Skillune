@@ -48,7 +48,11 @@ export default function MockInterview() {
         })
       });
       
-      if (!res.ok) throw new Error("Failed to start interview");
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error("Backend Error:", errorText);
+        throw new Error(`Failed to start interview: ${res.status} - ${errorText}`);
+      }
       
       const data = await res.json();
       setMessages([

@@ -43,7 +43,13 @@ async def start_interview(req: StartInterviewRequest, current_user: UserData = D
             f"Do NOT ask multiple questions at once. Keep it conversational."
         )
         
-        response = llm.invoke([SystemMessage(content=system_prompt)])
+        # Gemini requires a HumanMessage, it cannot process a SystemMessage alone
+        messages = [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content="Hello, I am ready for my interview. Please introduce yourself and ask the first question.")
+        ]
+        
+        response = llm.invoke(messages)
         
         return {"status": "success", "message": response.content}
     except Exception as e:
