@@ -144,3 +144,76 @@ async def analyze_resume(
         "missing_skills": analysis_result.missing_skills,
         "summary": analysis_result.summary
     }
+
+class OptimizeResponse(BaseModel):
+    optimized_resume: str = Field(description="The heavily tailored and optimized resume content in markdown format.")
+
+@router.post("/optimize")
+async def optimize_resume(
+    resume: UploadFile = File(...),
+    job_description: str = Form(...),
+    current_user: UserData = Depends(get_current_user)
+):
+    if not resume.filename.endswith(('.pdf', '.docx')):
+        raise HTTPException(status_code=400, detail="Only PDF and DOCX files are supported.")
+    
+    file_bytes = await resume.read()
+    text = ""
+    
+    if resume.filename.endswith('.pdf'):
+        try:
+            text = extract_text_from_pdf(file_bytes)
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))
+    elif resume.filename.endswith('.docx'):
+        try:
+            text = extract_text_from_docx(file_bytes)
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+    try:
+        llm = ChatGoogleGenerativeAI(
+            model="gemini-2.5-pro",
+            temperature=0.7,
+            google_api_key=settings.GEMINI_API_KEY
+        )
+        parser = PydanticOutputParser(pydantic_object=OptimizeResponse)
+
+        prompt = PromptTemplate(
+            template="""You are an elite executive resume writer and ATS optimization expert.
+You have been given a candidate's original resume and a target job description.
+
+Your task is to REWRITE the resume so it perfectly aligns with the job description to pass ATS systems and impress recruiters.
+
+Original Resume:
+{resume_text}
+
+Target Job Description:
+{job_description}
+
+Rules:
+1. Do NOT invent fake experience or lie. Use the candidate's actual experience but frame it using the exact terminology and keywords from the job description.
+2. Emphasize metrics and achievements (e.g., "Increased sales by 20%"). If none exist, suggest placeholders like [Metric].
+3. Ensure the summary/objective clearly targets the role.
+4. Output the complete optimized resume in highly readable Markdown format. Include sections for Summary, Skills, Experience, and Education.
+
+{format_instructions}
+""",
+            input_variables=["resume_text", "job_description"],
+            partial_variables={"format_instructions": parser.get_format_instructions()}
+        )
+        
+        chain = prompt | llm | parser
+        result = chain.invoke({
+            "resume_text": text,
+            "job_description": job_description
+        })
+
+        return {"status": "success", "optimized_resume": result.optimized_resume}
+
+    except Exception as e:
+        error_msg = str(e)
+        if "RESOURCE_EXHAUSTED" in error_msg or "429" in error_msg or "quota" in error_msg.lower():
+            error_msg = "Gemini API Rate Limit Exceeded. Please wait a minute before trying again or upgrade your API key tier."
+        print(f"Resume Optimization Error: {error_msg}")
+        raise HTTPException(status_code=500, detail=error_msg)
