@@ -1,14 +1,33 @@
 "use client";
 import { Bell, Search, LogOut } from "lucide-react";
 import { User } from "@supabase/supabase-js";
+import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 
 export function TopNav({ user }: { user: User }) {
   const router = useRouter();
+  const [credits, setCredits] = useState<number | null>(null);
+  
   const displayName = user.user_metadata?.full_name || user.email?.split('@')[0] || user.phone || "U";
   const initial = displayName.charAt(0).toUpperCase();
   const avatarUrl = user.user_metadata?.avatar_url;
+
+  useEffect(() => {
+    const fetchCredits = async () => {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from('profiles')
+        .select('credits')
+        .eq('id', user.id)
+        .single();
+        
+      if (data && data.credits !== undefined) {
+        setCredits(data.credits);
+      }
+    };
+    fetchCredits();
+  }, [user.id]);
 
   const handleSignOut = async () => {
     const supabase = createClient();
@@ -33,9 +52,11 @@ export function TopNav({ user }: { user: User }) {
       </div>
 
       <div className="flex items-center gap-4 ml-4">
-        <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-medium">
-          <span>150</span> Credits
-        </div>
+        {credits !== null && (
+          <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-medium">
+            <span>{credits}</span> Credits
+          </div>
+        )}
         <button className="relative p-2 text-muted-foreground hover:bg-secondary rounded-full transition-colors">
           <Bell className="w-5 h-5" />
           <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-destructive"></span>

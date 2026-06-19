@@ -11,7 +11,8 @@ import {
   FileEdit, 
   History, 
   Settings,
-  Map
+  Map,
+  User as UserIcon
 } from "lucide-react";
 
 import { User } from "@supabase/supabase-js";
@@ -29,6 +30,7 @@ export function Sidebar({ user }: { user: User }) {
     { name: "Interview Prep", href: "/interview-prep", icon: Briefcase },
     { name: "Mock Interview", href: "/mock-interview", icon: MessageSquare },
     { name: "Cover Letter Generator", href: "/cover-letter", icon: FileEdit },
+    { name: "Profile", href: "/profile", icon: UserIcon },
     { name: "History", href: "/history", icon: History },
     { name: "Settings", href: "/settings", icon: Settings },
   ];
