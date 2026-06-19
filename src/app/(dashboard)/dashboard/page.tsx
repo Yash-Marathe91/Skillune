@@ -10,6 +10,7 @@ export default async function Dashboard() {
   let avgAtsScore = 0;
   let totalAnalyses = 0;
   let totalCoverLetters = 0;
+  let avgInterviewScore = 0;
   let recentActivity: any[] = [];
 
   if (session) {
@@ -22,6 +23,12 @@ export default async function Dashboard() {
     const { data: coverLetters } = await supabase
       .from("cover_letters")
       .select("*, job_descriptions(company_name, job_title)")
+      .eq("user_id", session.user.id)
+      .order("created_at", { ascending: false });
+
+    const { data: interviews } = await supabase
+      .from("interviews")
+      .select("*")
       .eq("user_id", session.user.id)
       .order("created_at", { ascending: false });
 
@@ -48,6 +55,19 @@ export default async function Dashboard() {
           title: "Cover Letter Generated",
           desc: `For ${c.job_descriptions?.job_title || 'a role'} at ${c.job_descriptions?.company_name || 'a company'}.`,
           date: new Date(c.created_at)
+        });
+      });
+    }
+
+    if (interviews && interviews.length > 0) {
+      avgInterviewScore = Math.round(interviews.reduce((acc: any, curr: any) => acc + curr.overall_score, 0) / interviews.length);
+      
+      interviews.forEach((i: any) => {
+        recentActivity.push({
+          type: "interview",
+          title: "Mock Interview Completed",
+          desc: `Scored ${i.overall_score}/100 for the ${i.job_title} role.`,
+          date: new Date(i.created_at)
         });
       });
     }
@@ -141,7 +161,9 @@ export default async function Dashboard() {
           </div>
           <div className="flex items-end justify-between">
             <div>
-              <p className="text-3xl font-bold text-foreground">Pending</p>
+              <p className="text-3xl font-bold text-foreground">
+                {typeof avgInterviewScore !== 'undefined' && avgInterviewScore > 0 ? `${avgInterviewScore}%` : 'Pending'}
+              </p>
             </div>
           </div>
         </div>
