@@ -22,6 +22,7 @@ export default function MockInterview() {
   const [isListening, setIsListening] = useState(false);
   const [isVoiceMode, setIsVoiceMode] = useState(false);
   const [isVideoMode, setIsVideoMode] = useState(false);
+  const [postureFeedback, setPostureFeedback] = useState<string | null>(null);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
@@ -122,8 +123,25 @@ export default function MockInterview() {
     if ("speechSynthesis" in window) {
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
+      
+      let preferredGender = "female";
+      try {
+        const savedPrefs = localStorage.getItem("skillune_preferences");
+        if (savedPrefs) preferredGender = JSON.parse(savedPrefs).voiceGender || "female";
+      } catch (e) {}
+
       const voices = window.speechSynthesis.getVoices();
-      const voice = voices.find(v => v.lang.includes("en-US") && v.name.includes("Female")) || voices.find(v => v.lang.includes("en-US")) || voices[0];
+      let voice;
+      
+      if (preferredGender === "male") {
+        voice = voices.find(v => v.lang.includes("en-US") && (v.name.includes("Male") || v.name.includes("David") || v.name.includes("Guy"))) || voices.find(v => v.lang.includes("en-US"));
+      } else if (preferredGender === "neutral") {
+        voice = voices.find(v => v.lang.includes("en-US")) || voices[0]; // Neutral fallback
+      } else {
+        voice = voices.find(v => v.lang.includes("en-US") && (v.name.includes("Female") || v.name.includes("Zira") || v.name.includes("Samantha"))) || voices.find(v => v.lang.includes("en-US"));
+      }
+
+      if (!voice) voice = voices[0];
       if (voice) utterance.voice = voice;
       window.speechSynthesis.speak(utterance);
     }
@@ -214,14 +232,27 @@ export default function MockInterview() {
         })
       });
       
-      if (!res.ok) throw new Error("Failed to send message");
+      if (!res.ok) {
+        const errorText = await res.text();
+        let errorData = "Network error occurred.";
+        try {
+          const parsed = JSON.parse(errorText);
+          errorData = parsed.detail || errorData;
+        } catch(e) {}
+        throw new Error(errorData);
+      }
       
       const data = await res.json();
       setMessages([...newMessages, { role: "assistant", content: data.message }]);
+      
+      if (data.posture_feedback) {
+        setPostureFeedback(data.posture_feedback);
+      }
+      
       if (isVoiceMode) speakText(data.message);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setMessages([...newMessages, { role: "assistant", content: "Network error occurred." }]);
+      setMessages([...newMessages, { role: "assistant", content: `System Error: ${err.message}` }]);
     } finally {
       setIsLoading(false);
     }
@@ -479,6 +510,22 @@ export default function MockInterview() {
                 muted
                 className="w-full h-full object-cover transform -scale-x-100"
               />
+              
+              {postureFeedback && (
+                <div className="absolute top-4 left-4 right-4 bg-yellow-500/90 text-yellow-950 px-4 py-3 rounded-xl border border-yellow-400 text-sm shadow-xl backdrop-blur-sm animate-in slide-in-from-top-2 fade-in duration-300">
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-2 font-bold">
+                      <AlertTriangle className="w-4 h-4" />
+                      <span>Posture & Expression</span>
+                    </div>
+                    <button onClick={() => setPostureFeedback(null)} className="text-yellow-900 hover:text-yellow-950 p-1">
+                      ×
+                    </button>
+                  </div>
+                  <p className="text-xs font-medium leading-relaxed">{postureFeedback}</p>
+                </div>
+              )}
+
               <div className="absolute bottom-4 left-4 right-4 flex justify-between items-center bg-black/50 backdrop-blur-md px-4 py-2 rounded-lg border border-white/10">
                  <span className="text-white text-xs font-semibold flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>Live Feed</span>
                  <Camera className="w-4 h-4 text-white/70" />
