@@ -28,7 +28,6 @@ export function Sidebar({ user }: { user: User }) {
     { name: "Resume Optimizer", href: "/resume-optimizer", icon: PenTool },
     { name: "Interview Prep", href: "/interview-prep", icon: Briefcase },
     { name: "Mock Interview", href: "/mock-interview", icon: MessageSquare },
-    { name: "Voice Interview", href: "/voice-interview", icon: Mic },
     { name: "Cover Letter Generator", href: "/cover-letter", icon: FileEdit },
     { name: "History", href: "/history", icon: History },
     { name: "Settings", href: "/settings", icon: Settings },

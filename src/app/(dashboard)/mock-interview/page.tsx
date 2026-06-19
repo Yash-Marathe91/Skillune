@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Send, User, Bot, Briefcase, Settings2, Play, CheckCircle, AlertTriangle } from "lucide-react";
+import { Send, User, Bot, Briefcase, Settings2, Play, CheckCircle, AlertTriangle, Mic, MicOff, Volume2, VolumeX } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from "recharts";
 
@@ -19,8 +19,11 @@ export default function MockInterview() {
   const [isLoading, setIsLoading] = useState(false);
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [evaluationData, setEvaluationData] = useState<any>(null);
+  const [isListening, setIsListening] = useState(false);
+  const [isVoiceMode, setIsVoiceMode] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const recognitionRef = useRef<any>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -29,6 +32,66 @@ export default function MockInterview() {
   useEffect(() => {
     scrollToBottom();
   }, [messages, isLoading]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        recognitionRef.current = new SpeechRecognition();
+        recognitionRef.current.continuous = false;
+        recognitionRef.current.interimResults = false;
+        
+        recognitionRef.current.onresult = (event: any) => {
+          const transcript = event.results[0][0].transcript;
+          setInputValue((prev) => prev ? prev + " " + transcript : transcript);
+        };
+
+        recognitionRef.current.onerror = (event: any) => {
+          console.error("Speech recognition error", event.error);
+          setIsListening(false);
+        };
+
+        recognitionRef.current.onend = () => {
+          setIsListening(false);
+        };
+      }
+    }
+    
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+      if ("speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
+
+  const toggleListening = () => {
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+    } else {
+      if (recognitionRef.current) {
+        recognitionRef.current.start();
+        setIsListening(true);
+      } else {
+        alert("Speech recognition is not supported in your browser. Please use Google Chrome.");
+      }
+    }
+  };
+
+  const speakText = (text: string) => {
+    if (!isVoiceMode) return;
+    if ("speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      const voices = window.speechSynthesis.getVoices();
+      const voice = voices.find(v => v.lang.includes("en-US") && v.name.includes("Female")) || voices.find(v => v.lang.includes("en-US")) || voices[0];
+      if (voice) utterance.voice = voice;
+      window.speechSynthesis.speak(utterance);
+    }
+  };
 
   const startInterview = async () => {
     setIsStarted(true);
@@ -61,6 +124,7 @@ export default function MockInterview() {
       setMessages([
         { role: "assistant", content: data.message }
       ]);
+      if (isVoiceMode) speakText(data.message);
     } catch (err) {
       console.error(err);
       setMessages([{ role: "assistant", content: "Error starting interview. Please check your backend connection." }]);
@@ -97,6 +161,7 @@ export default function MockInterview() {
       
       const data = await res.json();
       setMessages([...newMessages, { role: "assistant", content: data.message }]);
+      if (isVoiceMode) speakText(data.message);
     } catch (err) {
       console.error(err);
       setMessages([...newMessages, { role: "assistant", content: "Network error occurred." }]);
@@ -106,6 +171,9 @@ export default function MockInterview() {
   };
 
   const endInterview = async () => {
+    if (isListening) toggleListening();
+    if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+
     if (messages.length < 2) {
       setIsStarted(false);
       return;
@@ -328,21 +396,41 @@ export default function MockInterview() {
           {/* Chat Header */}
           <div className="h-16 border-b border-border px-6 flex items-center justify-between bg-secondary/30">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+              <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center relative">
                 <Bot className="w-5 h-5 text-primary" />
+                {isVoiceMode && (
+                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></span>
+                )}
               </div>
               <div>
-                <p className="font-semibold text-foreground text-sm">AI Interviewer</p>
+                <p className="font-semibold text-foreground text-sm flex items-center gap-2">
+                  AI Interviewer 
+                </p>
                 <p className="text-xs text-muted-foreground">{interviewType} • {jobRole}</p>
               </div>
             </div>
-            <button 
-              onClick={endInterview}
-              disabled={isLoading}
-              className="text-sm text-destructive hover:bg-destructive/10 px-3 py-1.5 rounded-md transition-colors disabled:opacity-50"
-            >
-              End Interview
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => {
+                  setIsVoiceMode(!isVoiceMode);
+                  if (isVoiceMode && "speechSynthesis" in window) {
+                    window.speechSynthesis.cancel();
+                  }
+                }}
+                className={`p-2 rounded-md transition-colors ${isVoiceMode ? 'bg-primary/10 text-primary hover:bg-primary/20' : 'text-muted-foreground hover:bg-secondary'}`}
+                title={isVoiceMode ? "Disable Voice Responses" : "Enable Voice Responses"}
+              >
+                {isVoiceMode ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+              </button>
+              <div className="w-[1px] h-6 bg-border mx-1"></div>
+              <button 
+                onClick={endInterview}
+                disabled={isLoading}
+                className="text-sm text-destructive hover:bg-destructive/10 px-3 py-1.5 rounded-md transition-colors disabled:opacity-50"
+              >
+                End Interview
+              </button>
+            </div>
           </div>
 
           {/* Chat Messages */}
@@ -385,31 +473,46 @@ export default function MockInterview() {
 
           {/* Chat Input */}
           <div className="p-4 border-t border-border bg-white">
-            <div className="relative flex items-center">
-              <textarea 
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    sendMessage();
-                  }
-                }}
-                disabled={isLoading}
-                placeholder="Type your response here... (Press Enter to send)"
-                className="w-full pl-4 pr-14 py-3 rounded-xl border border-border focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none h-[52px] min-h-[52px] max-h-32 bg-secondary/20"
-                rows={1}
-              />
-              <button 
-                onClick={sendMessage}
-                disabled={!inputValue.trim() || isLoading}
-                className="absolute right-2 p-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            <div className="relative flex items-center gap-2">
+              <button
+                onClick={toggleListening}
+                className={`p-3 rounded-xl transition-colors border shadow-sm ${
+                  isListening 
+                    ? "bg-red-500 hover:bg-red-600 text-white border-red-600 animate-pulse" 
+                    : "bg-white hover:bg-secondary text-foreground border-border"
+                }`}
+                title={isListening ? "Stop Recording" : "Start Voice Input"}
               >
-                <Send className="w-4 h-4" />
+                {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
               </button>
+              
+              <div className="relative flex-1">
+                <textarea 
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      sendMessage();
+                    }
+                  }}
+                  disabled={isLoading}
+                  placeholder={isListening ? "Listening..." : "Type your response here... (Press Enter to send)"}
+                  className="w-full pl-4 pr-14 py-3 rounded-xl border border-border focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none h-[52px] min-h-[52px] max-h-32 bg-secondary/20"
+                  rows={1}
+                />
+                <button 
+                  onClick={sendMessage}
+                  disabled={!inputValue.trim() || isLoading}
+                  className="absolute right-2 top-2 p-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Send className="w-4 h-4" />
+                </button>
+              </div>
             </div>
-            <p className="text-center text-xs text-muted-foreground mt-2">
-              Tip: Answer fully and honestly. The AI will evaluate your response before asking the next question.
+            <p className="text-center text-xs text-muted-foreground mt-3 flex items-center justify-center gap-2">
+              {isListening && <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>}
+              Tip: Answer fully and honestly. Use the microphone for realistic voice practice.
             </p>
           </div>
         </div>
