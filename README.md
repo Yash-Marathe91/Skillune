@@ -1,36 +1,56 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Skillune
 
-## Getting Started
+A fully open-source, AI-powered career platform designed to help you optimize your resume, prepare for interviews, and land your dream job without expensive subscriptions.
 
-First, run the development server:
+## 🚀 Features
+
+- **ATS Resume Analyzer**: Upload your resume and compare it against any job description. Powered by Google Gemini 2.5 Flash, it extracts missing skills and generates an ATS compatibility score.
+- **AI Cover Letter Generator**: Automatically generate highly personalized cover letters tailored to your target job.
+- **Mock Interview Chat**: Practice technical and behavioral interviews with an interactive AI recruiter that provides real-time feedback.
+- **Secure Relational Database**: Built on top of Supabase and PostgreSQL to securely store all your documents, scores, and history.
+
+## 🛠️ Tech Stack
+
+- **Frontend**: Next.js 14 (App Router), React, Tailwind CSS, Lucide Icons
+- **Backend**: FastAPI (Python), LangChain, Uvicorn
+- **AI Model**: Google Gemini 2.5 Flash
+- **Database & Auth**: Supabase (PostgreSQL)
+
+---
+
+## 💻 Getting Started (Local Development)
+
+To run the full-stack application locally, you need to run both the Frontend (Next.js) and the Backend (FastAPI) simultaneously in two separate terminals.
+
+### 1. Start the Python Backend
+
+Open a terminal at the root of the project and run the following commands:
 
 ```bash
+# Move into the backend directory
+cd backend
+
+# Activate the virtual environment (Windows)
+.\venv\Scripts\activate
+
+# Start the FastAPI server on http://localhost:8000
+uvicorn main:app --reload
+```
+*(Note: If you are on Mac/Linux, activate the environment using `source venv/bin/activate` instead).*
+
+### 2. Start the Next.js Frontend
+
+Open a **second** new terminal at the root of the project and run:
+
+```bash
+# Install dependencies (if you haven't already)
+npm install
+
+# Start the Next.js development server on http://localhost:3000
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### 3. Environment Variables
+Ensure you have the proper environment variables set up:
+- `.env.local` in the root folder for Next.js (Supabase URL & Anon Key).
+- `.env` in the `backend/` folder for FastAPI (Supabase URL, Anon Key, and `GEMINI_API_KEY`).

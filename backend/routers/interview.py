@@ -28,6 +28,8 @@ def get_llm():
         google_api_key=settings.GEMINI_API_KEY
     )
 
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
+
 @router.post("/start")
 async def start_interview(req: StartInterviewRequest, current_user: UserData = Depends(get_current_user)):
     try:
@@ -41,10 +43,11 @@ async def start_interview(req: StartInterviewRequest, current_user: UserData = D
             f"Do NOT ask multiple questions at once. Keep it conversational."
         )
         
-        response = llm.invoke([{"role": "system", "content": system_prompt}])
+        response = llm.invoke([SystemMessage(content=system_prompt)])
         
         return {"status": "success", "message": response.content}
     except Exception as e:
+        print(f"Interview Start Error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/chat")
@@ -54,26 +57,25 @@ async def chat_interview(req: ChatRequest, current_user: UserData = Depends(get_
         
         # Build the message history for LangChain
         messages = [
-            {
-                "role": "system", 
-                "content": (
-                    f"You are an expert interviewer for a {req.job_role} position. "
-                    "The user just answered your previous question. "
-                    "First, provide a brief (1-2 sentence) constructive feedback on their answer. "
-                    "Then, ask the NEXT relevant interview question. Do NOT ask more than one question. "
-                    "If the user says they don't know, provide a hint or move on to a different topic. "
-                    "Keep your overall response under 150 words."
-                )
-            }
+            SystemMessage(content=(
+                f"You are an expert interviewer for a {req.job_role} position. "
+                "The user just answered your previous question. "
+                "First, provide a brief (1-2 sentence) constructive feedback on their answer. "
+                "Then, ask the NEXT relevant interview question. Do NOT ask more than one question. "
+                "If the user says they don't know, provide a hint or move on to a different topic. "
+                "Keep your overall response under 150 words."
+            ))
         ]
         
         for msg in req.history:
-            # Langchain expects 'human' or 'user' and 'ai' or 'assistant'
-            role = "human" if msg.role == "user" else "ai"
-            messages.append({"role": role, "content": msg.content})
+            if msg.role == "user":
+                messages.append(HumanMessage(content=msg.content))
+            else:
+                messages.append(AIMessage(content=msg.content))
             
         response = llm.invoke(messages)
         
         return {"status": "success", "message": response.content}
     except Exception as e:
+        print(f"Interview Chat Error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
