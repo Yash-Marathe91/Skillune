@@ -10,7 +10,8 @@ import {
   Mic, 
   FileEdit, 
   History, 
-  Settings 
+  Settings,
+  Map
 } from "lucide-react";
 
 import { User } from "@supabase/supabase-js";
@@ -23,8 +24,7 @@ export function Sidebar({ user }: { user: User }) {
   const menuItems = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { name: "Resume Analyzer", href: "/resume-analyzer", icon: FileText },
-    { name: "ATS Match", href: "/ats-match", icon: CheckCircle },
-    { name: "Skill Gap Analysis", href: "/skill-gap", icon: BarChart },
+    { name: "Learning Roadmap", href: "/roadmap", icon: Map },
     { name: "Resume Optimizer", href: "/resume-optimizer", icon: PenTool },
     { name: "Interview Prep", href: "/interview-prep", icon: Briefcase },
     { name: "Mock Interview", href: "/mock-interview", icon: MessageSquare },
