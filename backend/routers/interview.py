@@ -21,6 +21,11 @@ class ChatRequest(BaseModel):
     job_role: str
     history: List[ChatMessage]
 
+class ChatVisionRequest(BaseModel):
+    job_role: str
+    history: List[ChatMessage]
+    latest_frame_base64: str = None
+
 class EvaluateRequest(BaseModel):
     job_role: str
     interview_type: str
@@ -101,6 +106,42 @@ async def chat_interview(req: ChatRequest, current_user: UserData = Depends(get_
         return {"status": "success", "message": response.content}
     except Exception as e:
         print(f"Interview Chat Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/chat_vision")
+async def chat_vision_interview(req: ChatVisionRequest, current_user: UserData = Depends(get_current_user)):
+    try:
+        llm = get_llm()
+        
+        messages = [
+            SystemMessage(content=(
+                f"You are an expert interviewer for a {req.job_role} position. "
+                "The user just answered your previous question AND you are given a picture of them speaking. "
+                "1. Provide a brief (1-2 sentence) constructive feedback on their answer. "
+                "2. Provide a brief (1 sentence) feedback on their body language, facial expression, and posture based on the image provided. "
+                "3. Ask the NEXT relevant interview question. Do NOT ask more than one question. "
+                "Keep your overall response highly conversational, human-aligned, and under 150 words."
+            ))
+        ]
+        
+        for i, msg in enumerate(req.history):
+            if msg.role == "user":
+                # Only attach the image to the very last user message
+                if i == len(req.history) - 1 and req.latest_frame_base64:
+                    messages.append(HumanMessage(content=[
+                        {"type": "text", "text": msg.content},
+                        {"type": "image_url", "image_url": {"url": f"{req.latest_frame_base64}"}}
+                    ]))
+                else:
+                    messages.append(HumanMessage(content=msg.content))
+            else:
+                messages.append(AIMessage(content=msg.content))
+            
+        response = llm.invoke(messages)
+        
+        return {"status": "success", "message": response.content}
+    except Exception as e:
+        print(f"Interview Chat Vision Error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/evaluate")

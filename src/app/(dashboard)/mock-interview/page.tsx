@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Send, User, Bot, Briefcase, Settings2, Play, CheckCircle, AlertTriangle, Mic, MicOff, Volume2, VolumeX } from "lucide-react";
+import { Send, User, Bot, Briefcase, Settings2, Play, CheckCircle, AlertTriangle, Mic, MicOff, Volume2, VolumeX, Camera, MessageSquare } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from "recharts";
 
@@ -21,9 +21,45 @@ export default function MockInterview() {
   const [evaluationData, setEvaluationData] = useState<any>(null);
   const [isListening, setIsListening] = useState(false);
   const [isVoiceMode, setIsVoiceMode] = useState(false);
+  const [isVideoMode, setIsVideoMode] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+    } catch (err) {
+      console.error("Camera access denied", err);
+      alert("Camera access is required for Computer Vision interviews.");
+      setIsVideoMode(false);
+    }
+  };
+
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+  };
+
+  useEffect(() => {
+    if (isVideoMode && isStarted) {
+      startCamera();
+      // Force voice mode on for realistic feeling in video
+      setIsVoiceMode(true);
+    } else {
+      stopCamera();
+    }
+    return () => stopCamera();
+  }, [isVideoMode, isStarted]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -133,6 +169,19 @@ export default function MockInterview() {
     }
   };
 
+  const captureFrame = () => {
+    if (videoRef.current && canvasRef.current && isVideoMode) {
+      const context = canvasRef.current.getContext('2d');
+      if (context) {
+        canvasRef.current.width = videoRef.current.videoWidth;
+        canvasRef.current.height = videoRef.current.videoHeight;
+        context.drawImage(videoRef.current, 0, 0);
+        return canvasRef.current.toDataURL('image/jpeg', 0.8);
+      }
+    }
+    return null;
+  };
+
   const sendMessage = async () => {
     if (!inputValue.trim()) return;
     
@@ -145,7 +194,14 @@ export default function MockInterview() {
       const supabase = createClient();
       const { data: { session } } = await supabase.auth.getSession();
       
-      const res = await fetch("http://localhost:8000/api/v1/interview/chat", {
+      let latestFrame = null;
+      if (isVideoMode) {
+        latestFrame = captureFrame();
+      }
+      
+      const endpoint = isVideoMode ? "chat_vision" : "chat";
+      
+      const res = await fetch(`http://localhost:8000/api/v1/interview/${endpoint}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -153,7 +209,8 @@ export default function MockInterview() {
         },
         body: JSON.stringify({
           job_role: jobRole,
-          history: newMessages
+          history: newMessages,
+          ...(isVideoMode && latestFrame ? { latest_frame_base64: latestFrame } : {})
         })
       });
       
@@ -256,6 +313,26 @@ export default function MockInterview() {
                   <option>System Design</option>
                   <option>Leadership & Management</option>
                 </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Interview Mode</label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div 
+                    onClick={() => setIsVideoMode(false)}
+                    className={`p-4 border rounded-xl cursor-pointer transition-all flex flex-col items-center gap-2 ${!isVideoMode ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border hover:border-primary/50"}`}
+                  >
+                    <MessageSquare className="w-6 h-6 text-primary" />
+                    <span className="font-semibold text-sm">Text & Audio</span>
+                  </div>
+                  <div 
+                    onClick={() => setIsVideoMode(true)}
+                    className={`p-4 border rounded-xl cursor-pointer transition-all flex flex-col items-center gap-2 ${isVideoMode ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border hover:border-primary/50"}`}
+                  >
+                    <Camera className="w-6 h-6 text-primary" />
+                    <span className="font-semibold text-sm">Live Video</span>
+                  </div>
+                </div>
               </div>
 
               <button 
@@ -392,8 +469,26 @@ export default function MockInterview() {
           )}
         </div>
       ) : (
-        <div className="flex-1 bg-white rounded-xl border border-border shadow-sm flex flex-col overflow-hidden">
-          {/* Chat Header */}
+        <div className={`flex-1 flex gap-4 overflow-hidden ${isVideoMode ? "flex-col lg:flex-row" : "flex-col"}`}>
+          {isVideoMode && (
+            <div className="lg:w-1/3 bg-black rounded-xl border border-border shadow-sm overflow-hidden relative flex shrink-0">
+              <video 
+                ref={videoRef}
+                autoPlay 
+                playsInline 
+                muted
+                className="w-full h-full object-cover transform -scale-x-100"
+              />
+              <div className="absolute bottom-4 left-4 right-4 flex justify-between items-center bg-black/50 backdrop-blur-md px-4 py-2 rounded-lg border border-white/10">
+                 <span className="text-white text-xs font-semibold flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>Live Feed</span>
+                 <Camera className="w-4 h-4 text-white/70" />
+              </div>
+              <canvas ref={canvasRef} className="hidden" />
+            </div>
+          )}
+
+          <div className="flex-1 bg-white rounded-xl border border-border shadow-sm flex flex-col overflow-hidden">
+            {/* Chat Header */}
           <div className="h-16 border-b border-border px-6 flex items-center justify-between bg-secondary/30">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center relative">
@@ -515,6 +610,7 @@ export default function MockInterview() {
               Tip: Answer fully and honestly. Use the microphone for realistic voice practice.
             </p>
           </div>
+        </div>
         </div>
       )}
     </div>
