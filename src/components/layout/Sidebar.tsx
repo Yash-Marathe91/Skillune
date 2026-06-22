@@ -15,7 +15,8 @@ import {
   User as UserIcon,
   HelpCircle,
   LifeBuoy,
-  BookOpen
+  BookOpen,
+  MessageCircle
 } from "lucide-react";
 
 import { User } from "@supabase/supabase-js";
@@ -38,6 +39,7 @@ export function Sidebar({ user }: { user: User }) {
     { name: "FAQ", href: "/faq", icon: HelpCircle },
     { name: "Support", href: "/support", icon: LifeBuoy },
     { name: "Resources", href: "/resources", icon: BookOpen },
+    { name: "Feedback", href: "/feedback", icon: MessageCircle },
     { name: "Settings", href: "/settings", icon: Settings },
   ];
 
