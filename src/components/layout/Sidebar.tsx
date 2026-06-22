@@ -12,7 +12,8 @@ import {
   History, 
   Settings,
   Map,
-  User as UserIcon
+  User as UserIcon,
+  HelpCircle
 } from "lucide-react";
 
 import { User } from "@supabase/supabase-js";
@@ -32,6 +33,7 @@ export function Sidebar({ user }: { user: User }) {
     { name: "Cover Letter Generator", href: "/cover-letter", icon: FileEdit },
     { name: "Profile", href: "/profile", icon: UserIcon },
     { name: "History", href: "/history", icon: History },
+    { name: "FAQ", href: "/faq", icon: HelpCircle },
     { name: "Settings", href: "/settings", icon: Settings },
   ];
 
