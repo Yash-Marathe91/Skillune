@@ -13,7 +13,8 @@ import {
   Settings,
   Map,
   User as UserIcon,
-  HelpCircle
+  HelpCircle,
+  LifeBuoy
 } from "lucide-react";
 
 import { User } from "@supabase/supabase-js";
@@ -34,6 +35,7 @@ export function Sidebar({ user }: { user: User }) {
     { name: "Profile", href: "/profile", icon: UserIcon },
     { name: "History", href: "/history", icon: History },
     { name: "FAQ", href: "/faq", icon: HelpCircle },
+    { name: "Support", href: "/support", icon: LifeBuoy },
     { name: "Settings", href: "/settings", icon: Settings },
   ];
 
